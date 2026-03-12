@@ -10,7 +10,7 @@ import type { Course } from "@/types/course";
 import { useAuth } from "@/context/AuthContext";
 import toast from "react-hot-toast";
 import Navbar from "@/components/layout/Navbar";
-import { Clock, Users, Star, GraduationCap, CheckCircle, ArrowLeft, ShieldCheck } from "lucide-react";
+import { Clock, Users, Star, GraduationCap, CheckCircle, ShieldCheck } from "lucide-react";
 
 export default function CourseDetailPage() {
   const params = useParams();

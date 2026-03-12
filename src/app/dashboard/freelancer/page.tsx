@@ -2,7 +2,7 @@
 
 import { useAuth } from "@/context/AuthContext";
 import { motion } from "framer-motion";
-import { Briefcase, IndianRupee, Star, Clock, Code, ArrowRight } from "lucide-react";
+import { Briefcase, IndianRupee, Star, Clock, ArrowRight } from "lucide-react";
 
 export default function FreelancerDashboard() {
   const { profile, loading } = useAuth();

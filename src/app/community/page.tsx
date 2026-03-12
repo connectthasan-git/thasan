@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import { motion } from "framer-motion";
 import { queryDocuments } from "@/services/firestoreService";
 import type { CommunityPost, Event } from "@/types/startup";
