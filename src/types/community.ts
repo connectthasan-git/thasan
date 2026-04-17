@@ -27,7 +27,9 @@ export interface CommunityCourse {
   currency?: string;
   instructorId: string;
   instructorName?: string;
+  instructorStage?: "applicant" | "coach";
   status: "pending" | "approved" | "rejected";
+  brandName?: string;
   modules: CommunityCourseModule[];
   createdAt?: unknown;
 }

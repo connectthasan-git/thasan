@@ -10,6 +10,11 @@ service cloud.firestore {
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin";
     }
 
+    function isApprovedCourseCreator() {
+      return isSignedIn()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isCourseCreatorApproved == true;
+    }
+
     function isPublicDocument() {
       return !("isPublished" in resource.data) || resource.data.isPublished == true;
     }
@@ -20,54 +25,71 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow read, create, update, delete: if isSignedIn() && request.auth.uid == userId;
+      allow read, create, update, delete: if isAdmin()
+        || (isSignedIn() && request.auth.uid == userId);
     }
 
     match /freelancerProfiles/{profileId} {
       allow read: if true;
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isAdmin()
+        || (isSignedIn() && request.resource.data.userId == request.auth.uid);
+      allow update, delete: if isAdmin()
+        || (isSignedIn() && resource.data.userId == request.auth.uid);
     }
 
     match /clientProjects/{projectId} {
       allow read: if true;
-      allow create: if isSignedIn() && request.resource.data.clientId == request.auth.uid;
-      allow update, delete: if isSignedIn() && resource.data.clientId == request.auth.uid;
+      allow create: if isAdmin()
+        || (isSignedIn() && request.resource.data.clientId == request.auth.uid);
+      allow update, delete: if isAdmin()
+        || (isSignedIn() && resource.data.clientId == request.auth.uid);
     }
 
     match /projectBids/{bidId} {
       allow read: if true;
-      allow create: if isSignedIn() && request.resource.data.bidderId == request.auth.uid;
-      allow update, delete: if isSignedIn() && resource.data.bidderId == request.auth.uid;
+      allow create: if isAdmin()
+        || (isSignedIn() && request.resource.data.bidderId == request.auth.uid);
+      allow update, delete: if isAdmin()
+        || (isSignedIn() && resource.data.bidderId == request.auth.uid);
     }
 
     match /payments/{paymentId} {
-      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow read: if isAdmin()
+        || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isAdmin()
+        || (isSignedIn() && request.resource.data.userId == request.auth.uid);
+      allow update, delete: if isAdmin()
+        || (isSignedIn() && resource.data.userId == request.auth.uid);
     }
 
     match /startups/{startupId} {
       allow read: if true;
-      allow create: if isSignedIn() && request.resource.data.founderId == request.auth.uid;
-      allow update, delete: if isSignedIn() && resource.data.founderId == request.auth.uid;
+      allow create: if isAdmin()
+        || (isSignedIn() && request.resource.data.founderId == request.auth.uid);
+      allow update, delete: if isAdmin()
+        || (isSignedIn() && resource.data.founderId == request.auth.uid);
     }
 
     match /communityPosts/{postId} {
       allow read: if true;
-      allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
-      allow update, delete: if isSignedIn() && resource.data.authorId == request.auth.uid;
+      allow create: if isAdmin()
+        || (isSignedIn() && request.resource.data.authorId == request.auth.uid);
+      allow update, delete: if isAdmin()
+        || (isSignedIn() && resource.data.authorId == request.auth.uid);
     }
 
     match /communityComments/{commentId} {
       allow read: if true;
-      allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
-      allow update, delete: if isSignedIn() && resource.data.authorId == request.auth.uid;
+      allow create: if isAdmin()
+        || (isSignedIn() && request.resource.data.authorId == request.auth.uid);
+      allow update, delete: if isAdmin()
+        || (isSignedIn() && resource.data.authorId == request.auth.uid);
     }
 
     match /communityGroups/{groupId} {
       allow read: if true;
-      allow create: if isSignedIn() && request.resource.data.createdBy == request.auth.uid;
+      allow create: if isAdmin()
+        || (isSignedIn() && request.resource.data.createdBy == request.auth.uid);
       allow update, delete: if isAdmin();
     }
 
@@ -77,10 +99,14 @@ service cloud.firestore {
         || (isSignedIn() && resource.data.instructorId == request.auth.uid)
         || isAdmin();
 
-      // Instructors can create courses for groups they own; no admin approval needed
-      allow create: if isSignedIn()
-        && request.resource.data.instructorId == request.auth.uid
-        && get(/databases/$(database)/documents/communityGroups/$(request.resource.data.groupId)).data.createdBy == request.auth.uid;
+      // Any signed-in user can submit pending courses; approved creators can publish directly
+      allow create: if isAdmin()
+        || (isSignedIn()
+          && request.resource.data.instructorId == request.auth.uid
+          && (
+            request.resource.data.status == "pending"
+            || (request.resource.data.status == "approved" && isApprovedCourseCreator())
+          ));
 
       // Instructors (and admins) can freely update or delete their courses
       allow update, delete: if isAdmin()
@@ -88,24 +114,37 @@ service cloud.firestore {
     }
 
     match /communityCoursePurchases/{purchaseId} {
-      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow read: if isAdmin()
+        || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isAdmin()
+        || (isSignedIn() && request.resource.data.userId == request.auth.uid);
     }
 
     match /enrollments/{enrollmentId} {
-      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow read: if isAdmin()
+        || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isAdmin()
+        || (isSignedIn() && request.resource.data.userId == request.auth.uid);
+      allow update, delete: if isAdmin()
+        || (isSignedIn() && resource.data.userId == request.auth.uid);
     }
 
     match /internshipApplications/{applicationId} {
-      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow read: if isAdmin()
+        || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isAdmin()
+        || (isSignedIn() && request.resource.data.userId == request.auth.uid);
+      allow update, delete: if isAdmin()
+        || (isSignedIn() && resource.data.userId == request.auth.uid);
     }
 
     match /notifications/{notificationId} {
-      allow read, write: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow read: if isAdmin()
+        || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isAdmin()
+        || (isSignedIn() && request.resource.data.userId == request.auth.uid);
+      allow update, delete: if isAdmin()
+        || (isSignedIn() && resource.data.userId == request.auth.uid);
     }
 
     match /courses/{courseId} {
@@ -120,7 +159,8 @@ service cloud.firestore {
 
     match /studentBuilds/{buildId} {
       allow read: if true;
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow create: if isAdmin()
+        || (isSignedIn() && request.resource.data.userId == request.auth.uid);
       allow update, delete: if isAdmin()
         || (isSignedIn() && resource.data.userId == request.auth.uid);
     }

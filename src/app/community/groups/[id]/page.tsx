@@ -45,6 +45,7 @@ export default function CommunityGroupPage() {
     currency: "INR",
   });
   const [modules, setModules] = useState([{ ...emptyModule }]);
+  const [moduleDrafts, setModuleDrafts] = useState<Record<string, { title: string; youtubeUrl: string }>>({});
 
   const fetchData = async () => {
     try {
@@ -93,10 +94,6 @@ export default function CommunityGroupPage() {
       router.replace(`/login?redirect=${encodeURIComponent(`/community/groups/${id}`)}`);
       return;
     }
-    if (group && group.createdBy !== user.uid) {
-      setError("Only the community owner can publish courses.");
-      return;
-    }
     if (!form.title || !form.description) {
       setError("Course title and description are required.");
       return;
@@ -113,6 +110,7 @@ export default function CommunityGroupPage() {
     setSaving(true);
     setError(null);
     try {
+      const creatorApproved = Boolean(profile?.isCourseCreatorApproved);
       await communityService.createCourse({
         groupId: id,
         title: form.title.trim(),
@@ -123,8 +121,9 @@ export default function CommunityGroupPage() {
         currency: form.isPaid ? form.currency : "INR",
         instructorId: user.uid,
         instructorName: profile?.name || "",
-        // Courses are immediately active; no separate admin approval
-        status: "approved",
+        instructorStage: creatorApproved ? "coach" : "applicant",
+        status: creatorApproved ? "approved" : "pending",
+        brandName: "Thasan Academy",
         modules: cleanedModules,
       });
       setForm({ title: "", description: "", isPaid: false, price: "", currency: "INR" });
@@ -138,6 +137,48 @@ export default function CommunityGroupPage() {
       console.error("Failed to publish community course", err);
       const message = err instanceof Error ? err.message : "Unexpected error";
       setError(`Unable to publish course: ${message}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleAppendModule = async (course: CommunityCourse) => {
+    if (!user) {
+      router.replace(`/login?redirect=${encodeURIComponent(`/community/groups/${id}`)}`);
+      return;
+    }
+
+    if (course.instructorId !== user.uid) {
+      setError("Only the course creator can add modules.");
+      return;
+    }
+
+    const draft = moduleDrafts[course.id] || { title: "", youtubeUrl: "" };
+    const nextModule = {
+      title: draft.title.trim(),
+      youtubeUrl: draft.youtubeUrl.trim(),
+    };
+
+    if (!nextModule.title || !nextModule.youtubeUrl) {
+      setError("Add a module title and YouTube URL first.");
+      return;
+    }
+
+    if (!getYouTubeEmbedUrl(nextModule.youtubeUrl)) {
+      setError("Please enter a valid YouTube URL.");
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+    try {
+      const nextModules = [...course.modules, nextModule];
+      await communityService.updateCourse(course.id, { modules: nextModules });
+      setCourses((prev) => prev.map((item) => (item.id === course.id ? { ...item, modules: nextModules } : item)));
+      setModuleDrafts((prev) => ({ ...prev, [course.id]: { title: "", youtubeUrl: "" } }));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unexpected error";
+      setError(`Unable to add module: ${message}`);
     } finally {
       setSaving(false);
     }
@@ -166,8 +207,11 @@ export default function CommunityGroupPage() {
 
   const isOwner = user?.uid === group.createdBy;
   const approvedCourses = courses.filter((course) => course.status === "approved");
-  const visibleCourses = isOwner ? courses : approvedCourses;
+  const visibleCourses = isOwner
+    ? courses
+    : courses.filter((course) => course.status === "approved" || course.instructorId === user?.uid);
   const purchasedCourseIds = new Set(purchases.map((purchase) => purchase.courseId));
+  const isCreatorApproved = Boolean(profile?.isCourseCreatorApproved);
 
   const loadRazorpayScript = () => {
     return new Promise<boolean>((resolve) => {
@@ -265,10 +309,11 @@ export default function CommunityGroupPage() {
             <div>
               <h1 className="text-3xl font-bold text-gray-900">{group.name}</h1>
               <p className="text-gray-500 mt-2">{group.description}</p>
+              <p className="text-xs text-gray-400 mt-2">Host your course with Thasan branding. First submission needs admin approval.</p>
             </div>
-            {isOwner && (
+            {user && (
               <Button onClick={() => setModalOpen(true)} className="rounded-2xl">
-                <Plus className="w-4 h-4 mr-2" /> Add Course
+                <Plus className="w-4 h-4 mr-2" /> {isCreatorApproved ? "Create Course" : "Submit Course"}
               </Button>
             )}
           </div>
@@ -288,9 +333,17 @@ export default function CommunityGroupPage() {
                   <div>
                     <h2 className="text-xl font-semibold text-gray-900">{course.title}</h2>
                     <p className="text-sm text-gray-500 mt-1">by {course.instructorName || "Community Instructor"}</p>
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-green-50 text-green-700 border border-green-100">
+                        {course.brandName || "Thasan Academy"}
+                      </span>
+                      <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold border ${course.instructorStage === "coach" ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-blue-50 text-blue-700 border-blue-100"}`}>
+                        {course.instructorStage === "coach" ? "Coach" : "Creator Applicant"}
+                      </span>
+                    </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    {isOwner && course.status !== "approved" && (
+                    {(isOwner || course.instructorId === user?.uid) && course.status !== "approved" && (
                       <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
                         course.status === "pending"
                           ? "bg-amber-50 text-amber-700 border border-amber-100"
@@ -354,6 +407,37 @@ export default function CommunityGroupPage() {
                         </div>
                       );
                     })}
+
+                    {course.instructorId === user?.uid && (
+                      <div className="rounded-2xl border border-dashed border-green-200 bg-green-50/40 p-3 space-y-3">
+                        <p className="text-xs font-semibold text-green-800">Add next module (one by one)</p>
+                        <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-2 items-end">
+                          <Input
+                            label="Module title"
+                            value={moduleDrafts[course.id]?.title || ""}
+                            onChange={(e) =>
+                              setModuleDrafts((prev) => ({
+                                ...prev,
+                                [course.id]: { ...prev[course.id], title: e.target.value, youtubeUrl: prev[course.id]?.youtubeUrl || "" },
+                              }))
+                            }
+                          />
+                          <Input
+                            label="YouTube URL"
+                            value={moduleDrafts[course.id]?.youtubeUrl || ""}
+                            onChange={(e) =>
+                              setModuleDrafts((prev) => ({
+                                ...prev,
+                                [course.id]: { ...prev[course.id], youtubeUrl: e.target.value, title: prev[course.id]?.title || "" },
+                              }))
+                            }
+                          />
+                          <Button loading={saving} onClick={() => handleAppendModule(course)}>
+                            Add Module
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </motion.div>
@@ -370,7 +454,7 @@ export default function CommunityGroupPage() {
       <Modal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
-        title="Add YouTube Course"
+        title={isCreatorApproved ? "Create Branded Course" : "Submit Course For Approval"}
         size="lg"
       >
         <div className="space-y-5">
@@ -452,12 +536,21 @@ export default function CommunityGroupPage() {
             ))}
           </div>
 
+          <div className="rounded-2xl border border-green-100 bg-green-50/60 px-4 py-3">
+            <p className="text-xs font-semibold text-green-800">Brand: Thasan Academy</p>
+            <p className="text-xs text-green-700 mt-1">
+              {isCreatorApproved
+                ? "You are an approved course creator. New courses publish directly."
+                : "Your first course will be sent for admin approval. Once approved, you become a coach and next courses can publish directly."}
+            </p>
+          </div>
+
           <div className="flex justify-end gap-3 pt-2">
             <Button variant="ghost" onClick={() => setModalOpen(false)}>
               Cancel
             </Button>
             <Button loading={saving} onClick={handleCreateCourse}>
-              Publish Course
+              {isCreatorApproved ? "Publish Course" : "Submit For Approval"}
             </Button>
           </div>
         </div>

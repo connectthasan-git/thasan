@@ -11,6 +11,7 @@ export interface Course {
   enrolledCount: number;
   rating: number;
   createdAt: string;
+  isPublished?: boolean;
   previewModuleId?: string;
   previewLessonId?: string;
   previewTitle?: string;

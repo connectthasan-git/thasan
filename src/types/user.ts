@@ -15,6 +15,8 @@ export interface UserProfile {
   internshipStatus?: "none" | "eligible" | "active" | "completed";
   referralSource?: string;
   avatarUrl?: string;
+  isCourseCreatorApproved?: boolean;
+  coachTitle?: string;
   createdAt: string;
   updatedAt: string;
 }

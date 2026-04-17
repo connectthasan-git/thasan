@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { CheckCircle, Filter, Search, XCircle } from "lucide-react";
 import { communityService } from "@/features/community/communityService";
 import { CommunityCourse, CommunityGroup } from "@/types/community";
+import { updateDocument } from "@/services/firestoreService";
 
 export default function AdminCommunityCoursesPage() {
   const [courses, setCourses] = useState<CommunityCourse[]>([]);
@@ -50,8 +51,22 @@ export default function AdminCommunityCoursesPage() {
 
   const handleAction = async (id: string, status: "approved" | "rejected") => {
     try {
-      await communityService.updateCourse(id, { status });
-      setCourses((prev) => prev.map((course) => (course.id === id ? { ...course, status } : course)));
+      const target = courses.find((course) => course.id === id);
+      if (!target) return;
+
+      const patch: Partial<CommunityCourse> = { status };
+
+      if (status === "approved") {
+        patch.instructorStage = "coach";
+        patch.brandName = target.brandName || "Thasan Academy";
+        await updateDocument("users", target.instructorId, {
+          isCourseCreatorApproved: true,
+          coachTitle: "Coach",
+        });
+      }
+
+      await communityService.updateCourse(id, patch);
+      setCourses((prev) => prev.map((course) => (course.id === id ? { ...course, ...patch } : course)));
     } catch {
       // no-op
     }
