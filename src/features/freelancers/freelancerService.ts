@@ -2,11 +2,27 @@ import {
   createDocument,
   getDocument,
   updateDocument,
+  deleteDocument,
   queryDocuments,
   where,
-  orderBy,
 } from "@/services/firestoreService";
-import { FreelancerProfile, ClientProject, Payment } from "@/types/freelancer";
+import { FreelancerProfile, ClientProject, Payment, ProjectBid } from "@/types/freelancer";
+
+const toMillis = (value: unknown) => {
+  if (!value) return 0;
+  if (typeof value === "string") return new Date(value).getTime();
+  if (typeof value === "object" && value && "toDate" in value) {
+    const maybeTimestamp = value as { toDate?: () => Date };
+    if (typeof maybeTimestamp.toDate === "function") {
+      return maybeTimestamp.toDate().getTime();
+    }
+  }
+  return 0;
+};
+
+const sortByCreatedAtDesc = <T extends { createdAt?: unknown }>(items: T[]) => {
+  return [...items].sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
+};
 
 export const freelancerService = {
   async createProfile(data: Omit<FreelancerProfile, "id">) {
@@ -39,28 +55,50 @@ export const freelancerService = {
   },
 
   async getAvailableProjects() {
-    return queryDocuments<ClientProject>("clientProjects", [
+    const results = await queryDocuments<ClientProject>("clientProjects", [
       where("status", "==", "open"),
-      orderBy("createdAt", "desc"),
     ]);
+    return sortByCreatedAtDesc(results);
   },
 
   async getFreelancerProjects(freelancerId: string) {
-    return queryDocuments<ClientProject>("clientProjects", [
+    const results = await queryDocuments<ClientProject>("clientProjects", [
       where("assignedFreelancer", "==", freelancerId),
-      orderBy("createdAt", "desc"),
     ]);
+    return sortByCreatedAtDesc(results);
   },
 
   async updateProject(id: string, data: Partial<ClientProject>) {
     return updateDocument("clientProjects", id, data);
   },
 
-  async getPayments(freelancerId: string) {
-    return queryDocuments<Payment>("payments", [
-      where("freelancerId", "==", freelancerId),
-      orderBy("createdAt", "desc"),
+  async deleteProject(id: string) {
+    return deleteDocument("clientProjects", id);
+  },
+
+  async createBid(data: Omit<ProjectBid, "id">) {
+    return createDocument("projectBids", data as unknown as Record<string, unknown>);
+  },
+
+  async getBidsForProject(projectId: string) {
+    const results = await queryDocuments<ProjectBid>("projectBids", [
+      where("projectId", "==", projectId),
     ]);
+    return sortByCreatedAtDesc(results);
+  },
+
+  async getBidsByUser(bidderId: string) {
+    const results = await queryDocuments<ProjectBid>("projectBids", [
+      where("bidderId", "==", bidderId),
+    ]);
+    return sortByCreatedAtDesc(results);
+  },
+
+  async getPayments(freelancerId: string) {
+    const results = await queryDocuments<Payment>("payments", [
+      where("freelancerId", "==", freelancerId),
+    ]);
+    return sortByCreatedAtDesc(results);
   },
 
   async createPayment(data: Omit<Payment, "id">) {

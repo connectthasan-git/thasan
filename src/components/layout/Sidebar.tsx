@@ -36,6 +36,7 @@ const studentLinks: SidebarLink[] = [
 const freelancerLinks: SidebarLink[] = [
   { href: "/dashboard/freelancer", label: "Overview", icon: <Home size={18} /> },
   { href: "/dashboard/freelancer/projects", label: "Projects", icon: <ClipboardList size={18} /> },
+  { href: "/dashboard/freelancer/bids", label: "My Bids", icon: <Briefcase size={18} /> },
   { href: "/dashboard/freelancer/earnings", label: "Earnings", icon: <IndianRupee size={18} /> },
   { href: "/dashboard/freelancer/settings", label: "Settings", icon: <Settings size={18} /> },
 ];
@@ -53,7 +54,9 @@ const adminLinks: SidebarLink[] = [
   { href: "/dashboard/admin/courses", label: "Courses", icon: <GraduationCap size={18} /> },
   { href: "/dashboard/admin/internships", label: "Internships", icon: <Briefcase size={18} /> },
   { href: "/dashboard/admin/freelancers", label: "Freelancers", icon: <UsersRound size={18} /> },
+  { href: "/dashboard/admin/free-sources", label: "Free Sources", icon: <ClipboardList size={18} /> },
   { href: "/dashboard/admin/groups", label: "Groups", icon: <ShieldCheck size={18} /> },
+  { href: "/dashboard/admin/community-courses", label: "Community Courses", icon: <GraduationCap size={18} /> },
   { href: "/dashboard/admin/analytics", label: "Analytics", icon: <BarChart3 size={18} /> },
   { href: "/dashboard/admin/settings", label: "Settings", icon: <Settings size={18} /> },
 ];

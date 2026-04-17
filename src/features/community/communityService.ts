@@ -8,6 +8,7 @@ import {
   orderBy,
 } from "@/services/firestoreService";
 import { CommunityPost, CommunityComment, Event, Club } from "@/types/startup";
+import { CommunityCourse, CommunityCoursePurchase, CommunityGroup } from "@/types/community";
 
 export const communityService = {
   // Posts
@@ -45,6 +46,69 @@ export const communityService = {
     return queryDocuments<CommunityComment>("communityComments", [
       where("postId", "==", postId),
       orderBy("createdAt", "asc"),
+    ]);
+  },
+
+  // Groups
+  async createGroup(data: Omit<CommunityGroup, "id">) {
+    return createDocument("communityGroups", data as unknown as Record<string, unknown>);
+  },
+
+  async getGroup(id: string) {
+    return getDocument<CommunityGroup>("communityGroups", id);
+  },
+
+  async getApprovedGroups() {
+    return queryDocuments<CommunityGroup>("communityGroups", [
+      where("status", "==", "approved"),
+    ]);
+  },
+
+  async getGroupsByCreator(userId: string) {
+    return queryDocuments<CommunityGroup>("communityGroups", [
+      where("createdBy", "==", userId),
+    ]);
+  },
+
+  async getAllGroups() {
+    return queryDocuments<CommunityGroup>("communityGroups", []);
+  },
+
+  async updateGroup(id: string, data: Partial<CommunityGroup>) {
+    return updateDocument("communityGroups", id, data as Record<string, unknown>);
+  },
+
+  // Courses inside groups
+  async createCourse(data: Omit<CommunityCourse, "id">) {
+    return createDocument("communityCourses", data as unknown as Record<string, unknown>);
+  },
+
+  async getCoursesByGroup(groupId: string) {
+    return queryDocuments<CommunityCourse>("communityCourses", [
+      where("groupId", "==", groupId),
+    ]);
+  },
+
+  async getAllCourses() {
+    return queryDocuments<CommunityCourse>("communityCourses", []);
+  },
+
+  async updateCourse(id: string, data: Partial<CommunityCourse>) {
+    return updateDocument("communityCourses", id, data as Record<string, unknown>);
+  },
+
+  async deleteCourse(id: string) {
+    return deleteDocument("communityCourses", id);
+  },
+
+  // Purchases
+  async createPurchase(data: Omit<CommunityCoursePurchase, "id">) {
+    return createDocument("communityCoursePurchases", data as unknown as Record<string, unknown>);
+  },
+
+  async getPurchasesByUser(userId: string) {
+    return queryDocuments<CommunityCoursePurchase>("communityCoursePurchases", [
+      where("userId", "==", userId),
     ]);
   },
 

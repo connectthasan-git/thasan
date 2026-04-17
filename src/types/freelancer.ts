@@ -14,17 +14,33 @@ export interface FreelancerProfile {
 export interface ClientProject {
   id: string;
   clientId: string;
+  clientName?: string;
   title: string;
   description: string;
   budget: number;
   category: "website" | "ai-automation" | "marketing" | "saas" | "mobile-app" | "other";
   skills: string[];
+  deadline?: string;
+  attachmentLink?: string;
   assignedFreelancer?: string;
   status: "open" | "assigned" | "in-progress" | "completed" | "cancelled";
   platformFee: number;
   freelancerPay: number;
+  bidsCount?: number;
   createdAt: string;
   completedAt?: string;
+}
+
+export interface ProjectBid {
+  id: string;
+  projectId: string;
+  projectTitle?: string;
+  bidderId: string;
+  bidderName?: string;
+  amount: number;
+  proposal: string;
+  status: "pending" | "accepted" | "rejected";
+  createdAt: string;
 }
 
 export interface Payment {
@@ -32,8 +48,9 @@ export interface Payment {
   userId: string;
   courseId?: string;
   projectId?: string;
+  communityCourseId?: string;
   amount: number;
-  type: "course-payment" | "freelancer-earning" | "platform-fee";
+  type: "course-payment" | "freelancer-earning" | "platform-fee" | "community-course";
   status: "pending" | "completed" | "failed" | "refunded";
   gateway: "razorpay" | "stripe" | "paypal";
   transactionId?: string;

@@ -183,6 +183,153 @@ function Testimonial({
   );
 }
 
+function RoadmapQuiz() {
+  const [level, setLevel] = useState<"beginner" | "intermediate" | "advanced" | "">("");
+  const [goal, setGoal] = useState<"job" | "freelance" | "startup" | "">("");
+  const [hours, setHours] = useState<"low" | "medium" | "high" | "">("");
+
+  const ready = level !== "" && goal !== "" && hours !== "";
+
+  const recommendation = (() => {
+    if (!ready) {
+      return null;
+    }
+
+    if (goal === "job") {
+      if (level === "beginner") {
+        return {
+          title: "Start with Digital Skills Bootcamp",
+          detail: "Build fundamentals first, then move to AI Automation Masterclass.",
+          path: "/courses",
+        };
+      }
+
+      return {
+        title: "Start with AI Automation Masterclass",
+        detail: "Focus on portfolio-ready builds and internship eligibility.",
+        path: "/courses",
+      };
+    }
+
+    if (goal === "freelance") {
+      return {
+        title: "Start with Freelancing Launchpad",
+        detail: "Pair it with one tech track and publish your first service offer in 2 weeks.",
+        path: "/courses",
+      };
+    }
+
+    return {
+      title: "Start with Startup Fundamentals",
+      detail: hours === "low"
+        ? "Use a lean weekly plan and validate one idea before building."
+        : "Build an MVP roadmap and ship your first prototype this month.",
+      path: "/courses",
+    };
+  })();
+
+  return (
+    <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm p-6 md:p-10">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">3Q</div>
+        <div>
+          <h3 className="text-2xl font-extrabold text-gray-900">Roadmap Quiz</h3>
+          <p className="text-sm text-gray-500">Answer 3 questions and get your starting course path.</p>
+        </div>
+      </div>
+
+      <div className="space-y-6">
+        <div>
+          <p className="text-sm font-semibold text-gray-800 mb-2">1. Where are you now?</p>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { value: "beginner", label: "Beginner" },
+              { value: "intermediate", label: "Some experience" },
+              { value: "advanced", label: "Advanced" },
+            ].map((option) => (
+              <button
+                key={option.value}
+                onClick={() => setLevel(option.value as "beginner" | "intermediate" | "advanced")}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                  level === option.value
+                    ? "bg-emerald-600 text-white shadow-lg shadow-emerald-200"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <p className="text-sm font-semibold text-gray-800 mb-2">2. What is your goal?</p>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { value: "job", label: "Get a job" },
+              { value: "freelance", label: "Freelance income" },
+              { value: "startup", label: "Build a startup" },
+            ].map((option) => (
+              <button
+                key={option.value}
+                onClick={() => setGoal(option.value as "job" | "freelance" | "startup")}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                  goal === option.value
+                    ? "bg-gray-900 text-white"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <p className="text-sm font-semibold text-gray-800 mb-2">3. How many hours per week can you commit?</p>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { value: "low", label: "1-4 hours" },
+              { value: "medium", label: "5-10 hours" },
+              { value: "high", label: "10+ hours" },
+            ].map((option) => (
+              <button
+                key={option.value}
+                onClick={() => setHours(option.value as "low" | "medium" | "high")}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                  hours === option.value
+                    ? "bg-amber-500 text-white"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {recommendation && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-2xl bg-emerald-50 border border-emerald-100 p-5"
+          >
+            <p className="text-xs uppercase tracking-widest font-bold text-emerald-700 mb-2">Recommended start</p>
+            <h4 className="text-lg font-extrabold text-gray-900">{recommendation.title}</h4>
+            <p className="text-sm text-gray-600 mt-1">{recommendation.detail}</p>
+            <Link
+              href={recommendation.path}
+              className="inline-flex items-center gap-2 mt-4 px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition-colors"
+            >
+              View your roadmap <ArrowRight size={15} />
+            </Link>
+          </motion.div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ─── Dashboard Simulation ─── */
 
 const SIDEBAR_ITEMS = ["Dashboard", "My Courses", "Projects", "Internships", "Community"];
@@ -614,6 +761,28 @@ export default function HomePage() {
             <Step number="3" title="Get Certified" icon={Award} />
             <Step number="4" title="Secure Internship" icon={Briefcase} />
             <Step number="5" title="Launch Startup" icon={Rocket} isLast />
+          </div>
+        </div>
+      </section>
+
+      {/* Roadmap Quiz */}
+      <section className="py-24 bg-gray-50/50">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start">
+            <div className="lg:col-span-2">
+              <h2 className="text-base font-bold text-green-600 uppercase tracking-widest mb-3">
+                Personalized Path
+              </h2>
+              <p className="text-4xl font-extrabold text-gray-900 leading-tight">
+                Get your AI learning roadmap in 60 seconds.
+              </p>
+              <p className="text-gray-600 mt-4 leading-relaxed">
+                Choose your current level, target outcome, and available time. We will suggest the best starting track.
+              </p>
+            </div>
+            <div className="lg:col-span-3">
+              <RoadmapQuiz />
+            </div>
           </div>
         </div>
       </section>

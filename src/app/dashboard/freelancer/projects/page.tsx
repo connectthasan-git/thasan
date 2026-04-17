@@ -1,12 +1,21 @@
 "use client";
 
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { Briefcase, ArrowRight } from "lucide-react";
 
 export default function FreelancerProjectsPage() {
   return (
     <div className="space-y-8">
-      <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-3xl font-bold text-gray-900">My Projects</motion.h1>
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold text-gray-900">My Projects</h1>
+        <Link
+          href="/projects"
+          className="inline-flex items-center gap-2 px-5 py-2.5 bg-green-600 text-white text-sm font-semibold rounded-2xl hover:bg-green-700 shadow-lg shadow-green-600/25 transition-all"
+        >
+          Browse Projects
+        </Link>
+      </motion.div>
 
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="flex gap-3 flex-wrap">
         {["All", "Active", "Completed", "Pending"].map((tab, i) => (

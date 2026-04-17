@@ -1,42 +1,48 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Users, ShieldCheck, CheckCircle, XCircle, Phone, Search, Filter } from "lucide-react";
-
-interface GroupRequest {
-  id: string;
-  name: string;
-  description: string;
-  type: "study" | "project" | "social";
-  maxMembers: number;
-  hasVoiceCall: boolean;
-  createdBy: string;
-  createdAt: string;
-  status: "pending" | "approved" | "rejected";
-}
-
-const sampleRequests: GroupRequest[] = [
-  { id: "g1", name: "Data Science Lab", description: "Practice data analysis, ML modeling, and Kaggle competitions together.", type: "project", maxMembers: 40, hasVoiceCall: true, createdBy: "Sneha Patel", createdAt: "2026-01-15", status: "pending" },
-  { id: "g2", name: "Freelancer Mastermind", description: "Weekly calls to share tips, accountability, and client strategies.", type: "social", maxMembers: 25, hasVoiceCall: true, createdBy: "Vikram Singh", createdAt: "2026-01-14", status: "pending" },
-  { id: "g3", name: "React Study Group", description: "Learn React, hooks, and Next.js together with collaborative coding.", type: "study", maxMembers: 30, hasVoiceCall: false, createdBy: "Aisha Khan", createdAt: "2026-01-13", status: "pending" },
-  { id: "g4", name: "AI Builders Hub", description: "Collaborate on AI/ML projects and share knowledge.", type: "project", maxMembers: 100, hasVoiceCall: true, createdBy: "Arjun Kumar", createdAt: "2026-01-10", status: "approved" },
-  { id: "g5", name: "Web Dev Study Circle", description: "Weekly study sessions on React, Next.js, and modern web technologies.", type: "study", maxMembers: 50, hasVoiceCall: true, createdBy: "Priya Sharma", createdAt: "2026-01-08", status: "approved" },
-];
+import { communityService } from "@/features/community/communityService";
+import { CommunityGroup } from "@/types/community";
 
 export default function AdminGroupsPage() {
-  const [requests, setRequests] = useState<GroupRequest[]>(sampleRequests);
+  const [requests, setRequests] = useState<CommunityGroup[]>([]);
   const [filterStatus, setFilterStatus] = useState<"all" | "pending" | "approved" | "rejected">("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [loading, setLoading] = useState(true);
 
-  const filtered = requests.filter((r) => {
-    const matchesStatus = filterStatus === "all" || r.status === filterStatus;
-    const matchesSearch = !searchQuery || r.name.toLowerCase().includes(searchQuery.toLowerCase()) || r.createdBy.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesStatus && matchesSearch;
-  });
+  const fetchGroups = async () => {
+    try {
+      const data = await communityService.getAllGroups();
+      setRequests(data);
+    } catch {
+      setRequests([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const handleAction = (id: string, action: "approved" | "rejected") => {
-    setRequests((prev) => prev.map((r) => (r.id === id ? { ...r, status: action } : r)));
+  useEffect(() => {
+    fetchGroups();
+  }, []);
+
+  const filtered = useMemo(() => {
+    return requests.filter((r) => {
+      const matchesStatus = filterStatus === "all" || r.status === filterStatus;
+      const searchTarget = `${r.name} ${r.createdByName || ""}`.toLowerCase();
+      const matchesSearch = !searchQuery || searchTarget.includes(searchQuery.toLowerCase());
+      return matchesStatus && matchesSearch;
+    });
+  }, [filterStatus, requests, searchQuery]);
+
+  const handleAction = async (id: string, action: "approved" | "rejected") => {
+    try {
+      await communityService.updateGroup(id, { status: action });
+      setRequests((prev) => prev.map((r) => (r.id === id ? { ...r, status: action } : r)));
+    } catch {
+      // no-op
+    }
   };
 
   const pendingCount = requests.filter((r) => r.status === "pending").length;
@@ -94,7 +100,11 @@ export default function AdminGroupsPage() {
 
       {/* Group Requests List */}
       <div className="space-y-4">
-        {filtered.map((request, i) => (
+        {loading ? (
+          <div className="flex justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600" />
+          </div>
+        ) : filtered.map((request, i) => (
           <motion.div
             key={request.id}
             initial={{ opacity: 0, y: 10 }}
@@ -110,7 +120,7 @@ export default function AdminGroupsPage() {
                   </div>
                   <div>
                     <h3 className="font-bold text-gray-900">{request.name}</h3>
-                    <span className="text-xs text-gray-400">by {request.createdBy} • {request.createdAt}</span>
+                    <span className="text-xs text-gray-400">by {request.createdByName || "Community Member"}</span>
                   </div>
                   {request.status === "pending" && <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-semibold">Pending</span>}
                   {request.status === "approved" && <span className="px-3 py-1 rounded-full bg-green-100 text-green-700 text-xs font-semibold">Approved</span>}
@@ -118,7 +128,7 @@ export default function AdminGroupsPage() {
                 </div>
                 <p className="text-sm text-gray-500 mb-2">{request.description}</p>
                 <div className="flex items-center gap-4 text-xs text-gray-400">
-                  <span>Max: {request.maxMembers} members</span>
+                  <span>Max: {request.maxMembers === 0 ? "Unlimited" : `${request.maxMembers} members`}</span>
                   <span className={`px-2 py-0.5 rounded-full ${request.type === "study" ? "bg-blue-50 text-blue-600" : request.type === "project" ? "bg-purple-50 text-purple-600" : "bg-green-50 text-green-600"}`}>{request.type}</span>
                   {request.hasVoiceCall && (
                     <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-blue-600">
@@ -148,7 +158,7 @@ export default function AdminGroupsPage() {
         ))}
       </div>
 
-      {filtered.length === 0 && (
+      {!loading && filtered.length === 0 && (
         <div className="text-center py-16 bg-white rounded-3xl border border-gray-100">
           <Users className="w-12 h-12 text-gray-300 mx-auto mb-4" />
           <p className="text-gray-500 text-lg">No group requests found.</p>

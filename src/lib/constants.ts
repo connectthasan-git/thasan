@@ -35,6 +35,9 @@ export const INTERNSHIP_CATEGORIES = [
 export const NAV_LINKS = [
   { href: "/", label: "Home" },
   { href: "/courses", label: "Courses" },
+  { href: "/builds", label: "Builds" },
+  { href: "/internships", label: "Internships" },
+  { href: "/projects", label: "Freelancing" },
   { href: "/careers", label: "Careers" },
   { href: "/free-sources", label: "Free Sources" },
   { href: "/community", label: "Community" },

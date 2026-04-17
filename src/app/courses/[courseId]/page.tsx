@@ -84,6 +84,12 @@ export default function CourseDetailPage() {
               <button onClick={handleEnroll} className="w-full bg-green-600 hover:bg-green-700 text-white py-4 rounded-2xl font-bold text-base transition-all shadow-lg shadow-green-200 mb-6">
                 Enroll Now
               </button>
+              <Link
+                href={`/courses/${course.id}/preview`}
+                className="w-full inline-flex items-center justify-center px-4 py-3 rounded-2xl border border-green-200 bg-green-50 text-green-700 text-sm font-semibold hover:bg-green-100 transition-all mb-6"
+              >
+                Try Lesson 1 Free (No Login)
+              </Link>
               <ul className="space-y-3">
                 {["modules included", "Real project experience", "Certificate on completion", "Mentor support"].map((item, i) => (
                   <li key={i} className="flex items-center gap-3 text-sm text-gray-600">

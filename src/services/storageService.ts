@@ -33,3 +33,6 @@ export const uploadProfileImage = (userId: string, file: File) =>
 
 export const uploadCertificate = (certId: string, file: File) =>
   uploadFile(`certificates/${certId}/${file.name}`, file);
+
+export const uploadFreeResourceFile = (resourceId: string, file: File) =>
+  uploadFile(`free-resources/${resourceId}/${file.name}`, file);

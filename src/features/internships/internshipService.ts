@@ -24,17 +24,22 @@ export const internshipService = {
   },
 
   async getActiveInternships() {
-    return queryDocuments<Internship>(COLLECTION, [
-      where("isActive", "==", true),
+    const internships = await queryDocuments<Internship>(COLLECTION, [
       orderBy("createdAt", "desc"),
     ]);
+
+    return internships.filter(
+      (internship) => internship.isActive !== false && internship.isPublished !== false,
+    );
   },
 
   async getInternshipsByCategory(category: string) {
-    return queryDocuments<Internship>(COLLECTION, [
-      where("isActive", "==", true),
-      where("category", "==", category),
-    ]);
+    const internships = await internshipService.getActiveInternships();
+    return internships.filter((internship) => internship.category === category);
+  },
+
+  async getPublicInternships() {
+    return internshipService.getActiveInternships();
   },
 
   async applyForInternship(internshipId: string, userId: string) {

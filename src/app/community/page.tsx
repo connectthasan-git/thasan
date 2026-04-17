@@ -1,17 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
+import Link from "next/link";
 import { queryDocuments } from "@/services/firestoreService";
-import type { CommunityPost, Event } from "@/types/startup";
+import type { Event } from "@/types/startup";
 import Navbar from "@/components/layout/Navbar";
-import { Heart, MessageCircle, Calendar, UsersRound, Sparkles, ArrowRight, Plus, Phone, ShieldCheck, X, Users, Mic } from "lucide-react";
-
-const samplePosts: CommunityPost[] = [
-  { id: "1", authorId: "u1", authorName: "Arjun Kumar", title: "Just completed my first AI Automation project!", content: "Built a chatbot using GPT APIs and Firebase. The course was incredibly helpful. Here is what I learned...", type: "project", likes: 24, commentsCount: 8, createdAt: new Date().toISOString() },
-  { id: "2", authorId: "u2", authorName: "Priya Sharma", title: "Tips for landing your first freelance client", content: "After completing the Freelancing Launchpad course, I got my first client within 2 weeks. Here are my tips...", type: "discussion", likes: 45, commentsCount: 12, createdAt: new Date().toISOString() },
-  { id: "3", authorId: "u3", authorName: "Rahul Verma", title: "Weekend Hackathon Results", content: "Our team built a SaaS tool in 48 hours during the Thasan Hackathon. Amazing experience!", type: "hackathon", likes: 67, commentsCount: 15, createdAt: new Date().toISOString() },
-];
+import { useAuth } from "@/context/AuthContext";
+import { communityService } from "@/features/community/communityService";
+import type { CommunityGroup } from "@/types/community";
+import { Calendar, UsersRound, Sparkles, ArrowRight, Plus, Phone, ShieldCheck, X, Users, Mic } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 
 const sampleEvents: Event[] = [
   { id: "1", title: "AI Tools Workshop", description: "Hands-on workshop on ChatGPT, Midjourney, and automation tools.", type: "workshop", date: "2026-03-20", location: "Online", maxAttendees: 100, registeredUsers: [], createdAt: new Date().toISOString() },
@@ -19,65 +18,108 @@ const sampleEvents: Event[] = [
   { id: "3", title: "Hackathon 2026", description: "48-hour hackathon. Build, demo, and win prizes.", type: "hackathon", date: "2026-04-15", location: "Online", maxAttendees: 200, registeredUsers: [], createdAt: new Date().toISOString() },
 ];
 
-const typeBadge: Record<string, string> = { project: "bg-purple-50 text-purple-700", discussion: "bg-blue-50 text-blue-700", hackathon: "bg-amber-50 text-amber-700", workshop: "bg-green-50 text-green-700", "demo-day": "bg-rose-50 text-rose-700" };
-
-interface CommunityGroup {
-  id: string;
-  name: string;
-  description: string;
-  type: "study" | "project" | "social";
-  members: number;
-  maxMembers: number;
-  status: "approved" | "pending";
-  hasVoiceCall: boolean;
-  createdBy: string;
-}
-
-const sampleGroups: CommunityGroup[] = [
-  { id: "g1", name: "AI Builders Hub", description: "Collaborate on AI/ML projects and share knowledge.", type: "project", members: 45, maxMembers: 100, status: "approved", hasVoiceCall: true, createdBy: "Arjun Kumar" },
-  { id: "g2", name: "Web Dev Study Circle", description: "Weekly study sessions on React, Next.js, and modern web technologies.", type: "study", members: 32, maxMembers: 50, status: "approved", hasVoiceCall: true, createdBy: "Priya Sharma" },
-  { id: "g3", name: "Startup Founders Network", description: "Connect with fellow founders, share ideas, and find co-founders.", type: "social", members: 28, maxMembers: 75, status: "approved", hasVoiceCall: false, createdBy: "Rahul Verma" },
-  { id: "g4", name: "Data Science Lab", description: "Practice data analysis, ML modeling, and Kaggle competitions together.", type: "project", members: 0, maxMembers: 40, status: "pending", hasVoiceCall: true, createdBy: "Sneha Patel" },
-];
+const typeBadge: Record<string, string> = { hackathon: "bg-amber-50 text-amber-700", workshop: "bg-green-50 text-green-700", "demo-day": "bg-rose-50 text-rose-700" };
 
 export default function CommunityPage() {
-  const [posts, setPosts] = useState<CommunityPost[]>(samplePosts);
+  const { user, profile } = useAuth();
+  const searchParams = useSearchParams();
   const [events, setEvents] = useState<Event[]>(sampleEvents);
-  const [groups, setGroups] = useState<CommunityGroup[]>(sampleGroups);
-  const [tab, setTab] = useState<"discussions" | "events" | "groups">("discussions");
+  const [groups, setGroups] = useState<CommunityGroup[]>([]);
+  const [tab, setTab] = useState<"events" | "groups">("groups");
   const [showCreateGroup, setShowCreateGroup] = useState(false);
-  const [newGroup, setNewGroup] = useState({ name: "", description: "", type: "study" as "study" | "project" | "social", maxMembers: 50, hasVoiceCall: false });
+  const [newGroup, setNewGroup] = useState({ name: "", description: "", type: "study" as "study" | "project" | "social", maxMembers: 50, hasVoiceCall: false, unlimitedMembers: false });
+  const [groupError, setGroupError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [postsData, eventsData] = await Promise.all([
-          queryDocuments<CommunityPost>("community_posts", []),
+        const [eventsData] = await Promise.all([
           queryDocuments<Event>("events", []),
         ]);
-        if (postsData.length > 0) setPosts(postsData);
         if (eventsData.length > 0) setEvents(eventsData);
       } catch { /* sample fallback */ }
     };
     fetchData();
   }, []);
 
-  const handleCreateGroup = () => {
-    if (!newGroup.name.trim() || !newGroup.description.trim()) return;
-    const group: CommunityGroup = {
-      id: `g${groups.length + 1}`,
-      name: newGroup.name,
-      description: newGroup.description,
-      type: newGroup.type,
-      members: 0,
-      maxMembers: newGroup.maxMembers,
-      status: "pending",
-      hasVoiceCall: newGroup.hasVoiceCall,
-      createdBy: "You",
+  useEffect(() => {
+    const fetchGroups = async () => {
+      try {
+        const approved = await communityService.getApprovedGroups();
+        if (user) {
+          const mine = await communityService.getGroupsByCreator(user.uid);
+          const pendingMine = mine.filter((group) => group.status !== "approved");
+          const map = new Map<string, CommunityGroup>();
+          approved.forEach((group) => map.set(group.id, group));
+          pendingMine.forEach((group) => map.set(group.id, group));
+          setGroups(Array.from(map.values()));
+        } else {
+          setGroups(approved);
+        }
+      } catch {
+        setGroups([]);
+      }
     };
-    setGroups((prev) => [...prev, group]);
-    setNewGroup({ name: "", description: "", type: "study", maxMembers: 50, hasVoiceCall: false });
-    setShowCreateGroup(false);
+    fetchGroups();
+  }, [user]);
+
+  useEffect(() => {
+    if (searchParams.get("create") === "1") {
+      setTab("groups");
+      setShowCreateGroup(true);
+    }
+  }, [searchParams]);
+
+  const sortedGroups = useMemo(() => {
+    return [...groups].sort((a, b) => {
+      const aPending = a.status !== "approved" ? 0 : 1;
+      const bPending = b.status !== "approved" ? 0 : 1;
+      return aPending - bPending;
+    });
+  }, [groups]);
+
+  const handleCreateGroup = async () => {
+    if (!user) {
+      setGroupError("Please login to create a community.");
+      return;
+    }
+    if (!newGroup.name.trim() || !newGroup.description.trim()) {
+      setGroupError("Name and description are required.");
+      return;
+    }
+    setGroupError(null);
+    try {
+      const id = await communityService.createGroup({
+        name: newGroup.name.trim(),
+        description: newGroup.description.trim(),
+        type: newGroup.type,
+        members: 0,
+        maxMembers: newGroup.unlimitedMembers ? 0 : newGroup.maxMembers,
+        status: "pending",
+        hasVoiceCall: newGroup.hasVoiceCall,
+        createdBy: user.uid,
+        createdByName: profile?.name || "",
+      });
+      setGroups((prev) => [
+        {
+          id,
+          name: newGroup.name.trim(),
+          description: newGroup.description.trim(),
+          type: newGroup.type,
+          members: 0,
+          maxMembers: newGroup.unlimitedMembers ? 0 : newGroup.maxMembers,
+          status: "pending",
+          hasVoiceCall: newGroup.hasVoiceCall,
+          createdBy: user.uid,
+          createdByName: profile?.name || "",
+        },
+        ...prev,
+      ]);
+      setNewGroup({ name: "", description: "", type: "study", maxMembers: 50, hasVoiceCall: false, unlimitedMembers: false });
+      setShowCreateGroup(false);
+    } catch {
+      setGroupError("Unable to submit group. Please try again.");
+    }
   };
 
   return (
@@ -101,13 +143,13 @@ export default function CommunityPage() {
       <section className="bg-white border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex gap-8">
-            {(["discussions", "events", "groups"] as const).map((t) => (
+            {(["groups", "events"] as const).map((t) => (
               <button
                 key={t}
                 className={`py-4 border-b-2 font-semibold text-sm transition-colors ${tab === t ? "border-green-600 text-green-600" : "border-transparent text-gray-400 hover:text-gray-700"}`}
                 onClick={() => setTab(t)}
               >
-                {t === "discussions" ? "Discussions" : t === "events" ? "Events & Hackathons" : "Groups & Voice Calls"}
+                {t === "events" ? "Events & Hackathons" : "Communities"}
               </button>
             ))}
           </div>
@@ -117,31 +159,7 @@ export default function CommunityPage() {
       {/* Content */}
       <section className="py-14">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {tab === "discussions" ? (
-            <div className="space-y-5">
-              {posts.map((post, i) => (
-                <motion.div key={post.id} initial={{ opacity: 0, y: 15 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }} className="bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 p-6">
-                  <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 bg-green-100 text-green-600 rounded-2xl flex items-center justify-center text-sm font-bold flex-shrink-0">
-                      {post.authorName[0]}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-sm font-semibold text-gray-900">{post.authorName}</span>
-                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${typeBadge[post.type] || "bg-gray-100 text-gray-600"}`}>{post.type}</span>
-                      </div>
-                      <h3 className="text-lg font-bold text-gray-900 mb-1">{post.title}</h3>
-                      <p className="text-gray-500 text-sm line-clamp-2">{post.content}</p>
-                      <div className="flex items-center gap-5 mt-4 text-sm text-gray-400">
-                        <span className="flex items-center gap-1.5 hover:text-rose-500 cursor-pointer transition-colors"><Heart size={16} /> {post.likes}</span>
-                        <span className="flex items-center gap-1.5"><MessageCircle size={16} /> {post.commentsCount} comments</span>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          ) : tab === "events" ? (
+          {tab === "events" ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {events.map((event, i) => (
                 <motion.div key={event.id} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }} className="bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 p-6">
@@ -163,8 +181,8 @@ export default function CommunityPage() {
               {/* Groups Header */}
               <div className="flex items-center justify-between mb-8">
                 <div>
-                  <h2 className="text-2xl font-extrabold text-gray-900">Community Groups</h2>
-                  <p className="text-gray-500 text-sm mt-1">Create or join groups for study, projects, and voice calls. New groups require admin approval.</p>
+                  <h2 className="text-2xl font-extrabold text-gray-900">Communities</h2>
+                  <p className="text-gray-500 text-sm mt-1">Create a community and share your YouTube-based courses. New communities require admin approval.</p>
                 </div>
                 <button onClick={() => setShowCreateGroup(true)} className="px-5 py-2.5 bg-green-600 text-white rounded-2xl font-semibold text-sm hover:bg-green-700 transition-all shadow-lg shadow-green-200 flex items-center gap-2">
                   <Plus size={16} /> Create Group
@@ -182,7 +200,7 @@ export default function CommunityPage() {
 
               {/* Groups Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {groups.map((group, i) => (
+                {sortedGroups.map((group, i) => (
                   <motion.div
                     key={group.id}
                     initial={{ opacity: 0, y: 15 }}
@@ -198,7 +216,7 @@ export default function CommunityPage() {
                         </div>
                         <div>
                           <h3 className="text-lg font-bold text-gray-900">{group.name}</h3>
-                          <span className="text-xs text-gray-400">by {group.createdBy}</span>
+                          <span className="text-xs text-gray-400">by {group.createdByName || "Community Member"}</span>
                         </div>
                       </div>
                       {group.status === "pending" ? (
@@ -211,16 +229,25 @@ export default function CommunityPage() {
                     </div>
                     <p className="text-sm text-gray-500 mb-4">{group.description}</p>
                     <div className="flex items-center gap-4 text-sm text-gray-400 mb-4">
-                      <span className="flex items-center gap-1.5"><UsersRound size={14} /> {group.members}/{group.maxMembers} members</span>
+                      <span className="flex items-center gap-1.5"><UsersRound size={14} /> {group.members}/{group.maxMembers === 0 ? "Unlimited" : group.maxMembers} members</span>
                       <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${group.type === "study" ? "bg-blue-50 text-blue-700" : group.type === "project" ? "bg-purple-50 text-purple-700" : "bg-green-50 text-green-700"}`}>{group.type}</span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <button
-                        disabled={group.status === "pending"}
-                        className={`flex-1 py-3 rounded-2xl font-semibold text-sm flex items-center justify-center gap-2 transition-all ${group.status === "pending" ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-green-300"}`}
-                      >
-                        {group.status === "pending" ? "Awaiting Approval" : "Join Group"}
-                      </button>
+                      {group.status === "approved" ? (
+                        <Link
+                          href={`/community/groups/${group.id}`}
+                          className="flex-1 py-3 rounded-2xl font-semibold text-sm flex items-center justify-center gap-2 transition-all border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-green-300"
+                        >
+                          Enter Community
+                        </Link>
+                      ) : (
+                        <button
+                          disabled
+                          className="flex-1 py-3 rounded-2xl font-semibold text-sm flex items-center justify-center gap-2 transition-all bg-gray-100 text-gray-400 cursor-not-allowed"
+                        >
+                          Awaiting Approval
+                        </button>
+                      )}
                       {group.hasVoiceCall && group.status === "approved" && (
                         <button className="px-4 py-3 rounded-2xl bg-green-50 text-green-700 font-semibold text-sm hover:bg-green-100 transition-all flex items-center gap-2">
                           <Mic size={16} /> Voice Call
@@ -252,6 +279,12 @@ export default function CommunityPage() {
               <h3 className="text-xl font-extrabold text-gray-900">Create New Group</h3>
               <button onClick={() => setShowCreateGroup(false)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
             </div>
+
+            {groupError && (
+              <div className="mb-4 bg-red-50 border border-red-100 text-red-600 px-4 py-2 rounded-2xl text-sm">
+                {groupError}
+              </div>
+            )}
 
             <div className="space-y-5">
               <div>
@@ -295,10 +328,20 @@ export default function CommunityPage() {
                     onChange={(e) => setNewGroup({ ...newGroup, maxMembers: Number(e.target.value) })}
                     min={2}
                     max={500}
-                    className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                    disabled={newGroup.unlimitedMembers}
+                    className={`w-full px-4 py-3 rounded-2xl border border-gray-200 focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none ${newGroup.unlimitedMembers ? "bg-gray-100 text-gray-400" : ""}`}
                   />
                 </div>
               </div>
+              <label className="inline-flex items-center gap-2 text-sm text-gray-600">
+                <input
+                  type="checkbox"
+                  checked={newGroup.unlimitedMembers}
+                  onChange={(e) => setNewGroup({ ...newGroup, unlimitedMembers: e.target.checked })}
+                  className="rounded border-gray-300 text-green-600 focus:ring-green-500"
+                />
+                Unlimited members
+              </label>
               <div className="flex items-center gap-3 p-4 bg-green-50 rounded-2xl">
                 <input
                   type="checkbox"
@@ -331,8 +374,16 @@ export default function CommunityPage() {
 
       {/* Footer */}
       <footer className="bg-white border-t border-gray-100 py-12">
-        <div className="max-w-7xl mx-auto px-4 text-center text-gray-400 text-sm">
-          © {new Date().getFullYear()} Thasan AI. All rights reserved.
+        <div className="max-w-7xl mx-auto px-4 text-center text-gray-400 text-sm space-y-3">
+          <div className="flex items-center justify-center gap-6 text-sm">
+            <Link href="/community?create=1" className="text-green-600 font-semibold hover:text-green-700">
+              Create a Community
+            </Link>
+            <Link href="/community" className="text-gray-500 hover:text-gray-700">
+              Browse Communities
+            </Link>
+          </div>
+          <div>© {new Date().getFullYear()} Thasan AI. All rights reserved.</div>
         </div>
       </footer>
     </div>

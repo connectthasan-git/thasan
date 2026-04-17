@@ -2,13 +2,19 @@ export interface Internship {
   id: string;
   title: string;
   description: string;
+  company?: string;
+  location?: string;
+  isRemote?: boolean;
   project: string;
   mentorId: string;
   duration: string;
   category: "automation" | "social-media" | "ai-tools" | "research" | "community" | "product-dev";
   maxSlots: number;
+  appliedCount?: number;
   assignedStudents: string[];
   status: "open" | "in-progress" | "completed";
+  isActive?: boolean;
+  isPublished?: boolean;
   createdAt: string;
 }
 
