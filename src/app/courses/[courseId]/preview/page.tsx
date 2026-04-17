@@ -10,16 +10,29 @@ import { getDocument } from "@/services/firestoreService";
 import type { Course, Lesson } from "@/types/course";
 import { ArrowRight, BookOpen, Clock, GraduationCap } from "lucide-react";
 
-function getPreviewLesson(course: Course): { lesson: Lesson | null; moduleTitle: string } {
+function getPreviewLesson(course: Course): { lesson: Lesson | null; moduleTitle: string; previewLabel: string } {
   const sortedModules = [...(course.modules || [])].sort((a, b) => a.order - b.order);
-  const firstModule = sortedModules[0];
+  const explicitModule = course.previewModuleId
+    ? sortedModules.find((module) => module.id === course.previewModuleId)
+    : undefined;
+  const firstModule = explicitModule || sortedModules[0];
 
   if (!firstModule || !firstModule.lessons || firstModule.lessons.length === 0) {
-    return { lesson: null, moduleTitle: "" };
+    return { lesson: null, moduleTitle: "", previewLabel: "" };
   }
 
-  const firstLesson = [...firstModule.lessons].sort((a, b) => a.order - b.order)[0];
-  return { lesson: firstLesson || null, moduleTitle: firstModule.title };
+  const sortedLessons = [...firstModule.lessons].sort((a, b) => a.order - b.order);
+  const explicitLesson = course.previewLessonId
+    ? sortedLessons.find((lesson) => lesson.id === course.previewLessonId)
+    : undefined;
+  const previewLesson = explicitLesson || sortedLessons[0] || null;
+  const explicitPreview = Boolean(explicitModule || explicitLesson || course.previewTitle);
+
+  return {
+    lesson: previewLesson,
+    moduleTitle: firstModule.title,
+    previewLabel: course.previewTitle || (explicitPreview ? "Editor-selected preview" : "Free first lesson preview"),
+  };
 }
 
 export default function CoursePreviewPage() {
@@ -42,7 +55,7 @@ export default function CoursePreviewPage() {
   }, [courseId]);
 
   const preview = useMemo(() => {
-    if (!course) return { lesson: null as Lesson | null, moduleTitle: "" };
+    if (!course) return { lesson: null as Lesson | null, moduleTitle: "", previewLabel: "" };
     return getPreviewLesson(course);
   }, [course]);
 
@@ -74,7 +87,7 @@ export default function CoursePreviewPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
             <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold uppercase tracking-wider border border-emerald-100">
-              <BookOpen size={14} /> Free first lesson preview
+              <BookOpen size={14} /> {preview.previewLabel || "Free first lesson preview"}
             </span>
             <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 mt-4">{course.title}</h1>
             <p className="text-gray-600 mt-3 max-w-2xl">{course.description}</p>
